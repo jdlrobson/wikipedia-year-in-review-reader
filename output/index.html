@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <style>
+            video {
+                margin: auto;
+                width: 100%;
+            }
+            .ribbon {
+                display: flex;
+                flex-flow: wrap;
+                justify-content: center;
+            }
+            .jigsaw-piece {
+                width: 320px;
+                height: 320px;
+                mask-image: url( jigsaw.svg);
+                mask-repeat: no-repeat;
+                min-width: 320px;
+            }
+            .jigsaw-piece img {
+                height: 100%;
+                width: 100%;
+                object-fit: cover;
+                filter: grayscale(1);
+            }
+            .jigsaw-piece-1 {
+                mask-image: url( jigsaw2.svg);
+            }
+        </style>
+        <script src="./index.js"></script>
+    </head>
+    <body>
+        <video width="320" height="240" controls>
+            <source src="./final.mp4" type="video/mp4">
+        </video>
+        <div class="ribbon" id="app">
+            
+         </div>
+    </body>
+</html>
