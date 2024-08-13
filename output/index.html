@@ -18,6 +18,10 @@
                 mask-repeat: no-repeat;
                 min-width: 320px;
             }
+            .jigsaw-piece:hover {
+                transform: rotate(10deg);
+                transition: transform ease-in 100ms;
+            }
             .jigsaw-piece img {
                 height: 100%;
                 width: 100%;
@@ -26,6 +30,9 @@
             }
             .jigsaw-piece-1 {
                 mask-image: url( jigsaw2.svg);
+            }
+            .jigsaw-piece-1:hover {
+                transform: rotate(-10deg);
             }
         </style>
         <script src="./index.js"></script>
