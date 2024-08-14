@@ -11,8 +11,52 @@ async function sleep( seconds ) {
         }, seconds * 1000 );
     } );
 }
-async function scroll( page, seconds ) {
-    return new Promise( ( resolve ) => {
+
+const visitedTitles = {};
+
+const isVisited = ( title ) => {
+    return visitedTitles[title.replace(/ /g, '_')];
+};
+
+const markVisited = ( title ) => {
+    visitedTitles[title.replace(/ /g, '_')] = true;
+}
+
+const getUnvisitedTitles = ( titles ) => {
+    return titles.filter((title) => !isVisited(title));
+};
+
+async function scanForConnectionsAndClick( page, titles ) {
+    const selector = getUnvisitedTitles( titles ).map((a) => `.mw-parser-output a[title="${a.replace(/_/g, ' ')}"]`).join(',');
+    try {
+        const node = await page.$(selector);
+        if ( node === null ) {
+            console.log(`Found no links.` );
+            return;
+        }
+        const titleProp = await node.getProperty('title');
+        const titlePropValue = await titleProp.jsonValue();
+        console.log(`Found ${titlePropValue} in article.`);
+        await node.scrollIntoView( { behavior: 'smooth' } );
+        await node.focus();
+        await sleep( 3 );
+        await Promise.all( [
+            page.waitForNavigation(),
+            node.click()
+        ] );
+        markVisited( titlePropValue );
+        await sleep( 3 );
+        console.log(` Visited ${titlePropValue}`);
+        // keep scanning until cannot find any more!
+        await scanForConnectionsAndClick( page, titles );
+    } catch ( e ) {
+        console.log( e );
+        throw e;
+    }
+};
+
+async function scroll( page, seconds, titles = [] ) {
+    return new Promise( async ( resolve ) => {
         let i = 1;
         const int = setInterval( () => {
             i++;
@@ -20,10 +64,10 @@ async function scroll( page, seconds ) {
                 window.scrollTo( { top, behavior: 'smooth' } )
             }, 40 * i );
         }, 500 );
-        setTimeout( () => {
+        sleep( seconds ).then( () => {
             clearInterval( int );
             resolve();
-        }, seconds * 1000 )
+        } );
     } );
 }
 
@@ -61,24 +105,37 @@ async function search( page, title ) {
     await sleep( 1 );
 }
 
-async function makeFrame( page, title, mobile, action = 'scroll' ) {
+async function makeFrame( page, title, mobile, action = 'scroll', pages = [] ) {
     const prefix = mobile ? '.m.' : '.';
     const url = `https://en${prefix}wikipedia.org/wiki/${title}`;
     console.log(`Goto ${url}`);
+    markVisited( title );
     switch ( action ) {
         case 'search':
+            console.log('search', title);
             await search( page, title );
             break;
         default:
+            console.log('scroll', title);
             await page.goto(url);
-            await scroll( page, 2 );
+            await scroll( page, 2, pages );
             break;
     }  
     return Promise.resolve();
 }
 
+function getAction( i ) {
+    switch ( i ) {
+        case 0:
+            return 'search';
+        default:
+            return 'scroll';
+    }
+}
+
 async function run( year ) {
-    const pages = await getTopArticlesForYear( year, /* country doesnt work yet */ )
+    const titles = await getTopArticlesForYear( year, /* country doesnt work yet */ );
+    titles.unshift( `${year}` );
     const browser = await puppeteer.launch( { args: [ '--no-sandbox' ] } );
     const page = await browser.newPage();
     const SavePath = `./tmp/final.mp4`;
@@ -87,11 +144,25 @@ async function run( year ) {
     await recorder.start(SavePath);
     await sleep( 2 );
     await start( page, year );
-    for ( let i = 0; i < pages.length; i++ ) {
+    for ( let i = 0; i < titles.length; i++ ) {
         console.log(`Make frame ${i}`);
-        const isMobile = true; //Math.random() < 0.5;
-        const action = i < 5 ? 'search' : 'scroll';
-        await makeFrame( page, pages[i], isMobile, action );
+        const unvisited = getUnvisitedTitles( titles );
+        if ( i > 0 ) {
+            console.log('Scanning for pages');
+            try {
+                await scanForConnectionsAndClick( page, unvisited );
+            } catch ( e ) {
+                // no problemo
+            }
+        }
+        const isMobile = Math.random() < 0.5;
+        const title = titles[i];
+        const action = getAction( i );
+        if ( !isVisited( title ) ) {
+            await makeFrame( page, title, isMobile, action, unvisited );
+        } else {
+            console.log(`Skip visited page ${title}`)
+        }
     }
     await recorder.stop();  
 

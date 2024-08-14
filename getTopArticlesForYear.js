@@ -1,9 +1,19 @@
 const CURRENT_MONTH = 7;
 
-const filterOutRubbish = ( item ) => ![ 'Special:Search',
+const filterOut = ( item ) => ![ 'Special:Search',
+    'Taylor_Swift',
+    'Indian_Premier_League',
+    'Porno_y_helado',
+    'WrestleMania_XL',
+    'Facebook',
+    'Jeffrey_Epstein',
+    'Saltburn_(film)',
+    'Griselda_Blanco',
+    '2024_Indian_Premier_League',
+    'Deaths_in_2024',
     'YouTube', 'Main_Page', 'Cleopatra', 'Pornhub', 'XXXTentacion', '.xxx',
-    'Juneteenth'
-].includes( item.article ) && !item.article.includes(':')
+    'Juneteenth', 'Indian_Premier_League',
+].includes( item.article.replace( / /g, '_' ) ) && !item.article.includes(':')
 && !item.article.includes('List_of');
 
 async function getTopArticlesForYear( year, country = null ) {
@@ -22,7 +32,7 @@ async function getTopArticlesForYear( year, country = null ) {
     const sortByPageViews = ( page, page2 ) => page.views < page2.views ? 1 : -1;
     return Promise.all( queries ).then( ( results ) => {
         const pages = results.map( ( result ) => {
-            return result.items[0].articles.sort( sortByPageViews ).filter( filterOutRubbish ).slice(0, 5);
+            return result.items[0].articles.sort( sortByPageViews ).filter( filterOut ).slice(0, 5);
         } ).reduce((result, array) => result.concat(array), []).map(( page ) => page.article);
         const pagesWithoutDuplicates = pages.filter( ( article, i ) => pages.indexOf( article ) === i)
         console.log( pagesWithoutDuplicates );
